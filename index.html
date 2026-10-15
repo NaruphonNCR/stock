@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบคลังยา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ledger-style workbench — top bar with tabs, one short entry row per task, tables read like a stock card */
+:root{
+  --bg:#f2f5f3; --surface:#ffffff; --sunk:#e8eeea; --line:#d3ddd7; --ink:#14231c; --muted:#5b6d64;
+  --accent:#0d6b4e; --accent-ink:#ffffff; --accent-soft:#dcefe6;
+  --in:#1f6f9c; --in-soft:#dfeef7; --out:#a4502a; --out-soft:#f7e6dc; --btn-ink:#ffffff;
+  --ok:#2e7d4f; --warn:#a86b00; --warn-soft:#fbefd6; --bad:#b3261e; --bad-soft:#f9e1df;
+  --f-display:"Bai Jamjuree","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai",system-ui,"Noto Sans Thai",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1714; --surface:#16211c; --sunk:#1c2a24; --line:#2c3d35; --ink:#e3ece7; --muted:#97aaa0;
+  --accent:#4cc09a; --accent-ink:#06150f; --accent-soft:#183a2e;
+  --in:#6db6e0; --in-soft:#15303f; --out:#e59670; --out-soft:#3a2219; --btn-ink:#0b0f0d;
+  --ok:#6fcf97; --warn:#f0b54a; --warn-soft:#3a2d12; --bad:#f2817a; --bad-soft:#3d1b19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1714; --surface:#16211c; --sunk:#1c2a24; --line:#2c3d35; --ink:#e3ece7; --muted:#97aaa0;
+  --accent:#4cc09a; --accent-ink:#06150f; --accent-soft:#183a2e;
+  --in:#6db6e0; --in-soft:#15303f; --out:#e59670; --out-soft:#3a2219; --btn-ink:#0b0f0d;
+  --ok:#6fcf97; --warn:#f0b54a; --warn-soft:#3a2d12; --bad:#f2817a; --bad-soft:#3d1b19; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.who input{width:190px;height:34px;font-size:14px}
+.who .btn{height:34px}
+.who .muted{font-size:12px;color:var(--muted)}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.num,td.n,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:12px 0}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:18px}
+.brand h1{font-family:var(--f-display);font-size:20px;margin:0;line-height:1.1}
+.brand small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.who{font-size:13px;color:var(--muted)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;width:100%;scrollbar-width:none;margin-top:6px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{font:inherit;font-weight:500;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs .badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:12px;font-family:var(--f-mono)}
+
+main{padding-block:20px 48px}
+.notice{border:1px solid var(--line);background:var(--sunk);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.notice.warn{background:var(--warn-soft);border-color:transparent}
+section.view{display:grid;gap:18px}
+h2{font-family:var(--f-display);font-size:22px;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-size:16px;margin:0 0 10px}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+.head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;justify-content:space-between}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi .lbl{font-size:13px;color:var(--muted)}
+.kpi .val{font-family:var(--f-mono);font-size:26px;font-weight:500;margin-top:2px}
+.kpi .val small{font-size:13px;color:var(--muted);font-family:var(--f-body)}
+.kpi.in .val{color:var(--in)} .kpi.out .val{color:var(--out)} .kpi.warn .val{color:var(--warn)}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.panel.in{border-top:3px solid var(--in)} .panel.out{border-top:3px solid var(--out)}
+
+/* quick-entry row: date | doc no. | drug | qty | save */
+form.quick{display:grid;grid-template-columns:145px 160px minmax(0,1fr) 110px 150px auto;gap:12px;align-items:end}
+@media (max-width:980px){form.quick{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.f.drug{grid-column:1/-1}.quick .btn{grid-column:2}}
+/* importer */
+.imp{display:grid;gap:14px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--bg)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop input[type=file]{height:auto;border:0;padding:0;background:none;width:auto;flex:1 1 220px}
+.mapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}
+@media (max-width:760px){.mapgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stats .pill{font-size:13px;padding:3px 12px}
+.progress{height:10px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.progress > i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.more{padding:10px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+form.entry{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px 14px}
+.f{display:flex;flex-direction:column;gap:4px;grid-column:span 2;min-width:0}
+form.quick .f{grid-column:auto}
+.f.w3{grid-column:span 3}.f.w1{grid-column:span 1}
+@media (max-width:760px){form.entry{grid-template-columns:repeat(2,minmax(0,1fr))}form.entry .f,form.entry .f.w3{grid-column:span 2}form.entry .f.w1{grid-column:span 1}}
+label{font-size:13px;font-weight:500;color:var(--muted)}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0;height:40px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.hint{font-size:13px;color:var(--muted);min-height:20px;margin-top:8px}
+.hint.bad{color:var(--bad)} .hint.good{color:var(--ok)}
+.btn{font:inherit;font-weight:600;border:1px solid transparent;border-radius:6px;padding:0 18px;height:40px;cursor:pointer;background:var(--accent);color:var(--accent-ink);white-space:nowrap}
+.btn:hover{filter:brightness(1.07)}
+.btn:focus-visible,nav.tabs button:focus-visible,.link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.in{background:var(--in);color:var(--btn-ink)}.btn.out{background:var(--out);color:var(--btn-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);font-weight:500}
+.btn.danger{background:var(--bad);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{height:auto;padding:5px 10px;font-size:13px}
+.link{background:none;border:0;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:2px 4px}
+.formfoot{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:12px}
+.formfoot .sum{margin-right:auto;font-size:14px;color:var(--muted)}
+
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tools input,.tools select{width:auto;min-width:160px;flex:1 1 180px}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-weight:600;font-size:12.5px;color:var(--muted);text-align:left;background:var(--sunk);padding:9px 12px;white-space:nowrap;letter-spacing:.02em}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+.dname{font-weight:600}
+.dmeta{font-size:12.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.in{background:var(--in-soft);color:var(--in)}
+.pill.out{background:var(--out-soft);color:var(--out)}
+.pill.ex{background:var(--sunk);color:var(--muted);font-weight:500}
+.qin{color:var(--in)}.qout{color:var(--out)}
+.empty{padding:26px 16px;text-align:center;color:var(--muted)}
+ul.alerts{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+ul.alerts li{display:flex;gap:10px;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px}
+ul.alerts li:last-child{border-bottom:0}
+.confirm{display:inline-flex;gap:6px;align-items:center;font-size:13px;white-space:nowrap}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100vw - 32px);z-index:20}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.login-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 24px;display:grid;gap:14px}
+.login-card .brand{margin:0 0 6px}
+.login-card .btn{width:100%}
+</style>
+</head>
+<body>
+
+<section id="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand"><div class="mark">Rx</div><div><h1>ระบบคลังยา</h1><small>เข้าสู่ระบบเพื่อบันทึกรับ-จ่ายยา</small></div></div>
+    <div class="f"><label for="loginEmail">อีเมล</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+    <div class="f"><label for="loginPass">รหัสผ่าน</label><input id="loginPass" type="password" autocomplete="current-password" required></div>
+    <button class="btn" id="loginBtn">เข้าสู่ระบบ</button>
+    <div class="hint bad" id="loginMsg"></div>
+  </form>
+</section>
+<div id="app" hidden>
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div class="brand"><div class="mark">Rx</div><div><h1>ระบบคลังยา</h1><small>บันทึกรับยาตาม PO · ตัดจ่ายตามใบเบิก · ใช้งานร่วมกันได้หลายคน</small></div></div>
+      <div class="who"><span id="who"></span><span class="muted" id="syncInfo"></span><button class="btn ghost sm" id="refreshBtn" type="button">ดึงข้อมูลล่าสุด</button><button class="btn ghost sm" id="logoutBtn" type="button">ออกจากระบบ</button></div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="overview" aria-selected="true">ภาพรวม</button>
+      <button role="tab" data-tab="receive">รับยาเข้าคลัง</button>
+      <button role="tab" data-tab="issue">ตัดจ่ายยา</button>
+      <button role="tab" data-tab="stock">ยอดคงคลัง<span class="badge" id="stockBadge" hidden></span></button>
+      <button role="tab" data-tab="card">บัญชีคุมยา</button>
+      <button role="tab" data-tab="master">ทะเบียนรายการยา</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="notice"></div>
+
+  <!-- OVERVIEW -->
+  <section class="view" data-view="overview">
+    <div class="head"><div><h2>ภาพรวมคลังยา</h2><p class="sub" id="asof"></p></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">รายการยาในทะเบียน</div><div class="val" id="kDrugs">–</div></div>
+      <div class="kpi in"><div class="lbl">รับเข้าเดือนนี้</div><div class="val" id="kIn">–</div></div>
+      <div class="kpi out"><div class="lbl">ตัดจ่ายเดือนนี้</div><div class="val" id="kOut">–</div></div>
+      <div class="kpi warn"><div class="lbl">ต่ำกว่าจุดสั่งซื้อ / ยาหมด</div><div class="val" id="kLow">–</div></div>
+    </div>
+    <div class="cols">
+      <div class="panel"><h3>ยาที่ต้องสั่งซื้อ</h3><div id="actionList"></div></div>
+      <div class="panel"><h3>ความเคลื่อนไหวล่าสุด</h3><div id="recentList"></div></div>
+    </div>
+  </section>
+
+  <!-- RECEIVE -->
+  <section class="view" data-view="receive" hidden>
+    <div class="head"><div><h2>รับยาเข้าคลัง</h2><p class="sub">กรอก 4 ช่องแล้วกด Enter · วันที่และเลขที่ PO จะคงไว้ให้กรอกรายการถัดไปในใบเดียวกันได้ทันที</p></div></div>
+    <div class="panel in">
+      <form class="quick" id="recForm" novalidate autocomplete="off">
+        <div class="f"><label for="recDate">วันที่</label><input type="date" id="recDate"></div>
+        <div class="f"><label for="recPo">เลขที่ PO</label><input id="recPo" class="mono" placeholder="เช่น PO69-0125"></div>
+        <div class="f drug"><label for="recDrug">รายการยา (พิมพ์ชื่อยา)</label><input id="recDrug" list="drugList" placeholder="เช่น para"></div>
+        <div class="f"><label for="recQty">จำนวน</label><input type="number" id="recQty" min="1" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="f"><label for="recPack">หน่วย</label><select id="recPack"><option value="1">—</option></select></div>
+        <button class="btn in" id="recSave">บันทึกรับ</button>
+      </form>
+      <div class="hint" id="recMsg"></div>
+    </div>
+    <div><h3>รายการรับล่าสุด</h3><div class="tablebox" id="recTable"></div></div>
+  </section>
+
+  <!-- ISSUE -->
+  <section class="view" data-view="issue" hidden>
+    <div class="head"><div><h2>ตัดจ่ายยา</h2><p class="sub">กรอก 4 ช่องแล้วกด Enter · วันที่และเลขที่ใบเบิกจะคงไว้ให้กรอกรายการถัดไปในใบเดียวกันได้ทันที</p></div></div>
+    <div class="panel out">
+      <form class="quick" id="issForm" novalidate autocomplete="off">
+        <div class="f"><label for="issDate">วันที่</label><input type="date" id="issDate"></div>
+        <div class="f"><label for="issDoc">เลขที่ใบเบิก</label><input id="issDoc" class="mono" placeholder="เช่น RQ-1015"></div>
+        <div class="f drug"><label for="issDrug">รายการยา (พิมพ์ชื่อยา)</label><input id="issDrug" list="drugList" placeholder="เช่น para"></div>
+        <div class="f"><label for="issQty">จำนวน</label><input type="number" id="issQty" min="1" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="f"><label for="issPack">หน่วย</label><select id="issPack"><option value="1">—</option></select></div>
+        <button class="btn out" id="issSave">บันทึกจ่าย</button>
+      </form>
+      <div class="hint" id="issMsg"></div>
+    </div>
+    <div><h3>รายการจ่ายล่าสุด</h3><div class="tablebox" id="issTable"></div></div>
+  </section>
+  <datalist id="drugList"></datalist>
+
+  <!-- STOCK -->
+  <section class="view" data-view="stock" hidden>
+    <div class="head"><div><h2>ยอดคงคลัง</h2><p class="sub">คงเหลือ = รับเข้ารวม − ตัดจ่ายรวม</p></div>
+      </div>
+    <div class="tools"><input id="stockQ" type="search" placeholder="ค้นหาชื่อยา / รหัส"><select id="stockF"><option value="all">ทุกสถานะ</option><option value="low">ต่ำกว่าจุดสั่งซื้อ / ยาหมด</option><option value="zero">ยาหมด</option></select></div>
+    <div class="tablebox" id="stockTable"></div>
+  </section>
+
+  <!-- STOCK CARD -->
+  <section class="view" data-view="card" hidden>
+    <div class="head"><div><h2>บัญชีคุมยา (Stock card)</h2><p class="sub">เลือกรายการยาเพื่อดูยอดคงเหลือหลังการรับ-จ่ายแต่ละครั้ง หรือดูความเคลื่อนไหวทั้งหมด</p></div></div>
+    <div class="tools"><select id="cardDrug"></select><select id="cardType"><option value="all">รับและจ่าย</option><option value="in">เฉพาะรับ</option><option value="out">เฉพาะจ่าย</option></select><input type="month" id="cardMonth" aria-label="เดือน"></div>
+    <div class="tablebox" id="cardTable"></div>
+  </section>
+
+  <!-- MASTER -->
+  <section class="view" data-view="master" hidden>
+    <div class="head"><div><h2>ทะเบียนรายการยา</h2><p class="sub">เพิ่มหรือแก้ไขรายการยาที่คลังดูแล และกำหนดจุดสั่งซื้อ</p></div></div>
+    <div class="panel">
+      <form class="entry" id="drugForm" novalidate>
+        <div class="f w1"><label for="dCode">รหัสยา *</label><input id="dCode" class="mono" placeholder="เช่น 1001"></div>
+        <div class="f w3"><label for="dName">ชื่อยา *</label><input id="dName" placeholder="เช่น Paracetamol"></div>
+        <div class="f"><label for="dStr">ความแรง / รูปแบบ</label><input id="dStr" placeholder="เช่น 500 mg tab"></div>
+        <div class="f"><label for="dUnit">หน่วยนับ *</label><input id="dUnit" list="unitList" placeholder="เช่น เม็ด"><datalist id="unitList"><option value="เม็ด"><option value="แคปซูล"><option value="ขวด"><option value="หลอด"><option value="ampule"><option value="vial"><option value="ถุง"><option value="ซอง"><option value="กล่อง"></datalist></div>
+        <div class="f"><label for="dMin">จุดสั่งซื้อ (ขั้นต่ำ)</label><input type="number" id="dMin" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="f"><label for="dCat">ประเภท / บัญชียา</label><input id="dCat" list="catList" placeholder="เช่น เวชภัณฑ์ยา"><datalist id="catList"><option value="เวชภัณฑ์ยา"><option value="ED"><option value="NED"><option value="เวชภัณฑ์มิใช่ยา"></datalist></div>
+        <div class="formfoot"><div class="sum" id="drugMode">เพิ่มรายการใหม่</div><button type="button" class="btn ghost" id="drugClear">ยกเลิก</button><button class="btn" id="drugSave">บันทึกรายการยา</button></div>
+      </form>
+      <div class="hint" id="drugMsg"></div>
+    </div>
+    <div class="panel imp" id="impPanel">
+      <div><h3 style="margin:0">นำเข้ารายการยาจากไฟล์ Excel</h3><p class="sub">รองรับ .xlsx .xls .csv · รหัสยาที่ซ้ำกันหลายแถว (หลายขนาดบรรจุ) จะรวมเป็นรายการเดียว นับยอดคงคลังเป็นหน่วยย่อยที่สุด</p></div>
+      <label class="drop" id="impDrop" for="impFile"><b>เลือกไฟล์ หรือลากไฟล์มาวางที่นี่</b><input type="file" id="impFile" accept=".xlsx,.xls,.csv"></label>
+      <div id="impBody" hidden>
+        <div class="imp">
+          <div class="mapgrid" id="impMap"></div>
+          <div class="mapgrid">
+            <div class="f"><label for="impMin">ตั้งจุดสั่งซื้อจาก</label><select id="impMin"><option value="avg12">อัตราใช้เฉลี่ยต่อเดือน (12 เดือน ÷ 12)</option><option value="avg3">อัตราใช้เฉลี่ยต่อเดือน (3 เดือน ÷ 3)</option><option value="use1">อัตราใช้ 1 เดือนล่าสุด</option><option value="none">ไม่กำหนด</option></select></div>
+            <div class="f"><label for="impDup">รหัสที่มีในทะเบียนแล้ว</label><select id="impDup"><option value="update">อัปเดตข้อมูลรายการเดิม</option><option value="skip">ข้าม ไม่แก้ไข</option></select></div>
+          </div>
+          <div class="stats" id="impStats"></div>
+          <div class="tablebox" id="impPreview"></div>
+          <div class="progress" id="impProg" hidden><i></i></div>
+          <div class="formfoot" style="border-top:0;padding-top:0"><div class="sum" id="impMsg"></div><button type="button" class="btn ghost" id="impCancel">ยกเลิก</button><button type="button" class="btn" id="impGo">นำเข้า</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="staffPanel" hidden>
+      <h3>ผู้ใช้งานระบบ</h3>
+      <p class="sub" style="margin:0 0 12px">เฉพาะอีเมลในรายชื่อนี้เข้าใช้งานได้ ผู้ดูแลระบบยกเลิกรายการรับ/จ่ายได้</p>
+      <form class="entry" id="staffForm" novalidate>
+        <div class="f"><label for="stEmail">อีเมล</label><input id="stEmail" type="email" placeholder="name@example.com"></div>
+        <div class="f"><label for="stName">ชื่อที่แสดงเป็นผู้บันทึก</label><input id="stName" placeholder="เช่น ภก.สมชาย"></div>
+        <div class="f" style="justify-content:flex-end"><label style="display:flex;gap:8px;align-items:center;height:40px"><input type="checkbox" id="stAdmin" style="width:auto;height:auto"> ผู้ดูแลระบบ</label></div>
+        <div class="formfoot"><div class="sum hint" id="staffMsg" style="margin:0"></div><button class="btn">เพิ่มผู้ใช้งาน</button></div>
+      </form>
+      <div class="tablebox" style="margin-top:12px"><table><thead><tr><th>อีเมล</th><th>ชื่อ</th><th>สิทธิ์</th><th></th></tr></thead><tbody id="staffList"></tbody></table></div>
+    </div>
+    <div class="tools"><input id="masterQ" type="search" placeholder="ค้นหาชื่อยา / รหัส"></div>
+    <div class="tablebox" id="masterTable"></div>
+  </section>
+</main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = new Intl.NumberFormat("th-TH");
+const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const thDate = iso => iso ? new Date(iso+"T00:00:00").toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}) : "–";
+const sortKey = x => (x.date||"")+String(x.createdAt||0).padStart(15,"0");
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const NS = 8;                       // shards per collection: each live query holds ≤1000 docs
+const hashShard = s => { let h=0; for(const ch of String(s)) h=(h*31+ch.charCodeAt(0))>>>0; return h%NS; };
+const randShard = () => Math.floor(Math.random()*NS);
+const SHOW = 300;                   // rows shown in long tables before asking to search
+
+const S = { drugs:[], receipts:[], issues:[], mode:"loading", canWrite:false, canEdit:false, uid:null, names:{}, tab:"overview", editDrug:null, confirmDel:null, importing:false };
+/* ---------- Supabase ----------
+   ใส่ค่าโปรเจกต์ของคุณ 2 บรรทัดนี้ (Project Settings → API) */
+const SUPABASE_URL = "https://ezonqjxkxkbzuzbdkuos.supabase.co";
+const SUPABASE_KEY = "sb_publishable_t1dSvFouG4-Ioho-z0zKaQ_B2Y1BWgf";
+const sb = (window.supabase && SUPABASE_URL) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const GAS = !!sb;   // true = ใช้ฐานข้อมูลจริง, false = โหมดทดลอง
+const errText = e => {
+  const m = (e && (e.message || e.error_description)) ? (e.message || e.error_description) : String(e||"");
+  if(/row-level security|permission denied/i.test(m)) return "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้";
+  if(/Invalid login credentials/i.test(m)) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+  if(/Failed to fetch|NetworkError/i.test(m)) return "เชื่อมต่อฐานข้อมูลไม่ได้ ตรวจสอบอินเทอร์เน็ต";
+  return m.replace(/^Error:\s*/,"");
+};
+const fromRow = (r) => ({ id:r.id, date:r.date, po:r.po, doc:r.doc, drugId:r.drug_id, qty:r.qty,
+  packUnit:r.pack_unit, packQty:r.pack_qty, packSize:r.pack_size, by:r.recorder_name||r.recorded_by, createdAt:Date.parse(r.created_at) });
+async function fetchAll(table, select="*", order="id"){
+  const out=[]; const step=1000;
+  for(let from=0;;from+=step){
+    const {data,error}=await sb.from(table).select(select).order(order).range(from,from+step-1);
+    if(error) throw error; out.push(...data); if(data.length<step) break;
+  }
+  return out;
+}
+
+
+/* ---------- sample data (preview / when the store is unavailable) ---------- */
+function sampleData(){
+  const d=(id,code,name,strength,unit,min,packs)=>({id,code,name,strength,unit,min,packs:[{unit,size:1},...(packs||[])],cat:"ED",sample:true,shard:hashShard(code)});
+  const drugs=[
+    d("d-para500","1001","Paracetamol","500 mg tab","เม็ด",5000,[{unit:"กล่อง",size:1000}]), d("d-amox500","1002","Amoxicillin","500 mg cap","แคปซูล",2000,[{unit:"กล่อง",size:500}]),
+    d("d-metf500","1003","Metformin","500 mg tab","เม็ด",6000,[{unit:"กล่อง",size:1000}]), d("d-amlo5","1004","Amlodipine","5 mg tab","เม็ด",3000,[{unit:"กล่อง",size:100}]),
+    d("d-losa50","1005","Losartan","50 mg tab","เม็ด",3000,[{unit:"กล่อง",size:100}]), d("d-simva20","1006","Simvastatin","20 mg tab","เม็ด",3000,[{unit:"กล่อง",size:100}]),
+    d("d-omep20","1007","Omeprazole","20 mg cap","แคปซูล",2000,[{unit:"กล่อง",size:100}]), d("d-cef1g","2001","Ceftriaxone","1 g inj","vial",100,[{unit:"กล่อง",size:10}]),
+    d("d-nss1000","2002","NSS 0.9%","1000 ml","ถุง",200,[{unit:"ลัง",size:10}]), d("d-ors","1008","ORS","ผงเกลือแร่","ซอง",500,[{unit:"กล่อง",size:50}])
+  ];
+  const r=(id,date,po,drugId,qty)=>({id,date,po,drugId,qty,by:null,createdAt:Date.parse(date+"T09:00:00"),sample:true,shard:hashShard(id)});
+  const receipts=[
+    r("r01","2026-09-02","PO69-0812","d-para500",20000), r("r02","2026-09-02","PO69-0812","d-metf500",30000),
+    r("r03","2026-09-10","PO69-0840","d-amox500",6000), r("r04","2026-09-10","PO69-0840","d-amlo5",10000),
+    r("r05","2026-09-18","PO69-0871","d-cef1g",300), r("r06","2026-09-18","PO69-0871","d-losa50",8000),
+    r("r07","2026-09-25","PO69-0902","d-nss1000",400), r("r08","2026-10-01","PO69-1003","d-ors",800),
+    r("r09","2026-10-05","PO69-1011","d-omep20",5000), r("r10","2026-10-08","PO69-1020","d-para500",10000),
+    r("r11","2026-10-08","PO69-1020","d-simva20",4000)
+  ];
+  const s=(id,date,doc,drugId,qty)=>({id,date,doc,drugId,qty,by:null,createdAt:Date.parse(date+"T14:00:00"),sample:true,shard:hashShard(id)});
+  const issues=[
+    s("s01","2026-09-05","RQ-0901","d-para500",8000), s("s02","2026-09-05","RQ-0902","d-metf500",12000),
+    s("s03","2026-09-15","RQ-0915","d-amox500",4500), s("s04","2026-09-22","RQ-0922","d-cef1g",120),
+    s("s05","2026-09-29","RQ-0929","d-para500",9000), s("s06","2026-10-02","RQ-1002","d-nss1000",240),
+    s("s07","2026-10-06","RQ-1006","d-amlo5",7500), s("s08","2026-10-09","RQ-1009","d-ors",450),
+    s("s09","2026-10-12","RQ-1012","d-losa50",5500)
+  ];
+  return {drugs,receipts,issues};
+}
+
+/* ---------- derived stock ---------- */
+function compute(){
+  const byDrug=new Map(), byCode=new Map();
+  for(const d of S.drugs){ byDrug.set(d.id,{drug:d,inQty:0,outQty:0,qty:0}); byCode.set(String(d.code),d); }
+  if(S.stock){ for(const [id,v] of S.stock){ const g=byDrug.get(id); if(g){ g.inQty=v.in; g.outQty=v.out; } } }
+  else {
+    for(const r of S.receipts){ const g=byDrug.get(r.drugId); if(g) g.inQty+= +r.qty||0; }
+    for(const s of S.issues){ const g=byDrug.get(s.drugId); if(g) g.outQty+= +s.qty||0; }
+  }
+  for(const g of byDrug.values()){
+    g.qty=g.inQty-g.outQty;
+    g.status = g.qty<=0 ? "zero" : (g.drug.min && g.qty<g.drug.min ? "low" : "ok");
+  }
+  const byId=new Map(S.drugs.map(d=>[d.id,d]));
+  return {byDrug,byCode,byId};
+}
+let C = compute();
+
+/* ---------- helpers ---------- */
+const drugById = id => (C && C.byId) ? C.byId.get(id) : S.drugs.find(d=>d.id===id);
+const drugLabel = d => d ? `${d.name}${d.strength?" "+d.strength:""}` : "(ไม่พบรายการยา)";
+const optText = d => drugLabel(d);
+const docNo = x => x.po || x.inv || x.doc || "–";
+const packText = d => (d.packs||[]).map(p=>p.size>1?`${p.unit} (${nf.format(p.size)} ${d.unit})`:p.unit).join(" · ");
+const unitsOf = d => (d.packs&&d.packs.length) ? d.packs : [{unit:d.unit,size:1}];
+function inPacks(d,qty){
+  const big=[...(d.packs||[])].filter(p=>p.size>1).sort((a,b)=>b.size-a.size)[0];
+  if(!big||qty<=0) return "";
+  const n=Math.floor(qty/big.size), r=qty-n*big.size;
+  return `${nf.format(n)} ${big.unit}${r?` + ${nf.format(r)} ${d.unit}`:""}`;
+}
+function findDrug(text){
+  const t=text.trim(); if(!t) return null;
+  let d=S.drugs.find(x=>optText(x)===t) || C.byCode.get(t); if(d) return d;
+  const lc=t.toLowerCase();
+  const hits=S.drugs.filter(x=>(x.code+" "+drugLabel(x)).toLowerCase().includes(lc));
+  return hits.length===1?hits[0]:null;
+}
+function statusPill(st){
+  return st==="zero"?`<span class="pill bad">ยาหมด</span>`:st==="low"?`<span class="pill warn">ต่ำกว่าจุดสั่งซื้อ</span>`:`<span class="pill ok">ปกติ</span>`;
+}
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),2600); }
+function nameOf(by){ return by || "–"; }
+function resolveNames(){}
+const exTag = x => x.sample?` <span class="pill ex">ตัวอย่าง</span>`:"";
+const moreRow = (shown,total) => total>shown ? `<div class="more">แสดง ${nf.format(shown)} จาก ${nf.format(total)} รายการ ใช้ช่องค้นหาเพื่อหารายการที่ต้องการ</div>` : "";
+
+/* ---------- rendering ---------- */
+function renderNotice(){
+  let h="";
+  if(S.mode==="loading") h=`<div class="notice">กำลังโหลดข้อมูล…</div>`;
+  else if(S.mode==="demo") h=`<div class="notice warn">โหมดทดลอง: ยังไม่ได้ตั้งค่าฐานข้อมูล Supabase จึงแสดงข้อมูลตัวอย่างและไม่บันทึกจริง</div>`;
+  else if(S.mode==="error") h=`<div class="notice warn">โหลดข้อมูลไม่ได้: ${esc(S.err)} <button class="btn ghost sm" data-act="reload">ลองใหม่</button></div>`;
+  else if(S.drugs.length===0) h=`<div class="notice">ยังไม่มีรายการยาในฐานข้อมูล ไปที่แท็บ “ทะเบียนรายการยา” แล้วนำเข้าไฟล์ Excel รายการยา</div>`;
+  $("#notice").innerHTML=h;
+}
+function renderOverview(){
+  $("#asof").textContent="ข้อมูล ณ วันที่ "+new Date().toLocaleDateString("th-TH",{day:"numeric",month:"long",year:"numeric"});
+  const groups=[...C.byDrug.values()];
+  const active=new Set(groups.filter(g=>g.inQty||g.outQty).map(g=>g.drug.id));
+  const low=groups.filter(g=>g.status==="low" || (g.status==="zero" && active.has(g.drug.id))).sort((a,b)=>a.qty-b.qty);
+  const mon=todayISO().slice(0,7);
+  $("#kDrugs").textContent=nf.format(S.drugs.length);
+  $("#kIn").innerHTML=`${nf.format(S.monthIn ?? S.receipts.filter(r=>(r.date||"").startsWith(mon)).length)} <small>รายการ</small>`;
+  $("#kOut").innerHTML=`${nf.format(S.monthOut ?? S.issues.filter(r=>(r.date||"").startsWith(mon)).length)} <small>รายการ</small>`;
+  $("#kLow").textContent=nf.format(low.length);
+  const badge=$("#stockBadge"); badge.hidden=!low.length; badge.textContent=low.length;
+  const lowShown=low.slice(0,15);
+  $("#actionList").innerHTML = S.drugs.length
+    ? (low.length?`<ul class="alerts">${lowShown.map(g=>`<li><div><div class="dname">${esc(drugLabel(g.drug))}</div><div class="dmeta">คงเหลือ ${nf.format(g.qty)} / จุดสั่งซื้อ ${nf.format(g.drug.min||0)} ${esc(g.drug.unit)}</div></div>${statusPill(g.status)}</li>`).join("")}</ul>${low.length>15?`<p class="dmeta">และอีก ${nf.format(low.length-15)} รายการ ดูทั้งหมดที่แท็บ “ยอดคงคลัง”</p>`:""}`:`<div class="empty">ยอดคงคลังทุกรายการที่มีการเคลื่อนไหวอยู่เหนือจุดสั่งซื้อ</div>`)
+    : `<div class="empty">ยังไม่มีรายการยา เริ่มที่แท็บ “ทะเบียนรายการยา”</div>`;
+  const mv=[...S.receipts.map(x=>({...x,t:"in"})),...S.issues.map(x=>({...x,t:"out"}))].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))).slice(0,8);
+  $("#recentList").innerHTML = mv.length ? `<ul class="alerts">${mv.map(m=>`<li><div><div class="dname">${esc(drugLabel(drugById(m.drugId)))}</div><div class="dmeta">${thDate(m.date)} · ${m.t==="in"?"PO":"ใบเบิก"} ${esc(docNo(m))}</div></div><span class="num ${m.t==="in"?"qin":"qout"}">${m.t==="in"?"+":"−"}${nf.format(m.qty)}</span></li>`).join("")}</ul>` : `<div class="empty">ยังไม่มีการรับหรือจ่ายยา</div>`;
+}
+
+function delCell(kind,id){
+  if(!S.canEdit && S.mode!=="demo") return "";
+  if(S.confirmDel===kind+":"+id) return `<span class="confirm">ยกเลิก? <button class="btn danger sm" data-act="delYes" data-kind="${kind}" data-id="${esc(id)}">ยืนยัน</button><button class="link" data-act="delNo">ไม่</button></span>`;
+  return `<button class="link" data-act="del" data-kind="${kind}" data-id="${esc(id)}">ยกเลิกรายการ</button>`;
+}
+function qtyCells(r,d){
+  if(r.packUnit && r.packQty) return `${nf.format(r.packQty)}</td><td>${esc(r.packUnit)}${(r.packSize||1)>1?`<div class="dmeta">= ${nf.format(r.qty)} ${esc(d?.unit||"")}</div>`:""}`;
+  return `${nf.format(r.qty)}</td><td>${esc(d?.unit||"")}`;
+}
+function moveTable(rows,kind,docHead){
+  if(!rows.length) return `<div class="empty">${kind==="receipts"?"ยังไม่มีรายการรับยา":"ยังไม่มีรายการจ่ายยา"}</div>`;
+  return `<table><thead><tr><th>วันที่</th><th>${docHead}</th><th>รหัส</th><th>รายการยา</th><th class="n">จำนวน</th><th>หน่วย</th><th>ผู้บันทึก</th><th></th></tr></thead><tbody>${rows.map(r=>{const d=drugById(r.drugId);return `<tr><td>${thDate(r.date)}</td><td class="mono">${esc(docNo(r))}</td><td class="mono">${esc(d?.code||"")}</td><td><span class="dname">${esc(drugLabel(d))}</span>${exTag(r)}</td><td class="n ${kind==="receipts"?"qin":"qout"}">${qtyCells(r,d)}</td><td>${esc(nameOf(r.by))}</td><td>${delCell(kind,r.id)}</td></tr>`}).join("")}</tbody></table>`;
+}
+function renderRecTable(){ $("#recTable").innerHTML=moveTable([...S.receipts].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))).slice(0,30),"receipts","เลขที่ PO"); }
+function renderIssTable(){ $("#issTable").innerHTML=moveTable([...S.issues].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))).slice(0,30),"issues","เลขที่ใบเบิก"); }
+const byCodeSort = (a,b)=>String(a.code).localeCompare(String(b.code),undefined,{numeric:true});
+function renderStock(){
+  const q=$("#stockQ").value.trim().toLowerCase(), f=$("#stockF").value;
+  let gs=[...C.byDrug.values()].sort((a,b)=>byCodeSort(a.drug,b.drug));
+  if(q) gs=gs.filter(g=>(g.drug.name+" "+g.drug.code+" "+(g.drug.strength||"")).toLowerCase().includes(q));
+  if(f==="low") gs=gs.filter(g=>g.status!=="ok");
+  if(f==="zero") gs=gs.filter(g=>g.status==="zero");
+  if(f==="moving") gs=gs.filter(g=>g.inQty||g.outQty);
+  const shown=gs.slice(0,SHOW);
+  $("#stockTable").innerHTML = gs.length ? `<table><thead><tr><th>รหัส</th><th>รายการยา</th><th class="n">รับรวม</th><th class="n">จ่ายรวม</th><th class="n">คงเหลือ</th><th>หน่วย</th><th>เท่ากับ</th><th class="n">จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead><tbody>${shown.map(g=>`<tr><td class="mono">${esc(g.drug.code)}</td><td><span class="dname">${esc(drugLabel(g.drug))}</span>${exTag(g.drug)}</td><td class="n qin">${nf.format(g.inQty)}</td><td class="n qout">${nf.format(g.outQty)}</td><td class="n"><b>${nf.format(g.qty)}</b></td><td>${esc(g.drug.unit)}</td><td class="dmeta">${esc(inPacks(g.drug,g.qty))}</td><td class="n">${nf.format(g.drug.min||0)}</td><td>${statusPill(g.status)}</td></tr>`).join("")}</tbody></table>${moreRow(shown.length,gs.length)}` : `<div class="empty">${S.drugs.length?"ไม่พบรายการที่ตรงกับการค้นหา":"ยังไม่มีรายการยาในทะเบียน"}</div>`;
+}
+let cardSeq=0;
+async function loadCard(){
+  const drugId=$("#cardDrug").value, mon=$("#cardMonth").value, key=drugId+"|"+mon, seq=++cardSeq;
+  if(!GAS || (!drugId && !mon)){ S.card=null; renderCard(); return; }
+  $("#cardTable").innerHTML=`<div class="empty">กำลังโหลด…</div>`;
+  try{
+    const q=t=>{ let x=sb.from(t).select("*").order("created_at",{ascending:false}).limit(1000); if(drugId) x=x.eq("drug_id",drugId); if(mon && !drugId){ const [y,m]=mon.split("-").map(Number); const end=new Date(y,m,1); x=x.gte("date",mon+"-01").lt("date",`${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-01`); } return x; };
+    const [r,i]=await Promise.all([q("receipts"),q("issues")]);
+    if(r.error) throw r.error; if(i.error) throw i.error;
+    if(seq!==cardSeq) return;
+    S.card={key,receipts:r.data.map(fromRow),issues:i.data.map(fromRow)};
+  }catch(e){ S.card=null; toast("โหลดบัญชีคุมยาไม่สำเร็จ: "+errText(e)); }
+  renderCard();
+}
+function renderCard(){
+  const drugId=$("#cardDrug").value, t=$("#cardType").value, mon=$("#cardMonth").value;
+  const src=(S.card && S.card.key===drugId+"|"+mon) ? S.card : S;
+  let mv=[...src.receipts.map(x=>({...x,t:"in"})),...src.issues.map(x=>({...x,t:"out"}))];
+  if(drugId) mv=mv.filter(m=>m.drugId===drugId);
+  mv.sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+  let bal=0; for(const m of mv){ bal+= m.t==="in"?+m.qty:-m.qty; m.bal=bal; }
+  let rows=mv;
+  if(t!=="all") rows=rows.filter(m=>m.t===t);
+  if(mon) rows=rows.filter(m=>(m.date||"").startsWith(mon));
+  const one=!!drugId, unit=one?esc(drugById(drugId)?.unit||""):"";
+  if(!one) rows=[...rows].reverse();
+  const shown=rows.slice(0,500);
+  $("#cardTable").innerHTML = rows.length ? `<table><thead><tr><th>วันที่</th><th>ประเภท</th><th>เลขที่ PO / ใบเบิก</th>${one?"":"<th>รายการยา</th>"}<th class="n">รับ</th><th class="n">จ่าย</th>${one?`<th class="n">คงเหลือ${unit?" ("+unit+")":""}</th>`:""}<th>ผู้บันทึก</th></tr></thead><tbody>${shown.map(m=>`<tr><td>${thDate(m.date)}</td><td>${m.t==="in"?'<span class="pill in">รับ</span>':'<span class="pill out">จ่าย</span>'}${exTag(m)}</td><td class="mono">${esc(docNo(m))}</td>${one?"":`<td>${esc(drugLabel(drugById(m.drugId)))}</td>`}<td class="n qin">${m.t==="in"?nf.format(m.qty):""}</td><td class="n qout">${m.t==="out"?nf.format(m.qty):""}</td>${one?`<td class="n">${nf.format(m.bal)}</td>`:""}<td>${esc(nameOf(m.by))}</td></tr>`).join("")}</tbody></table>${moreRow(shown.length,rows.length)}` : `<div class="empty">ไม่มีความเคลื่อนไหวตามเงื่อนไขที่เลือก</div>`;
+}
+function renderMaster(){
+  const q=$("#masterQ").value.trim().toLowerCase();
+  let ds=[...S.drugs].sort(byCodeSort);
+  if(q) ds=ds.filter(d=>(d.name+" "+d.code+" "+(d.strength||"")).toLowerCase().includes(q));
+  const shown=ds.slice(0,SHOW);
+  $("#masterTable").innerHTML = ds.length ? `<table><thead><tr><th>รหัส</th><th>ชื่อยา</th><th>หน่วยนับคงคลัง</th><th>หน่วยรับ / จ่าย</th><th class="n">ใช้เฉลี่ย/เดือน</th><th class="n">จุดสั่งซื้อ</th><th>ประเภท</th><th class="n">คงเหลือ</th><th></th></tr></thead><tbody>${shown.map(d=>`<tr><td class="mono">${esc(d.code)}</td><td><span class="dname">${esc(drugLabel(d))}</span>${exTag(d)}</td><td>${esc(d.unit)}</td><td class="dmeta">${esc(packText(d))}</td><td class="n">${d.use12!=null?nf.format(Math.round(d.use12/12)):"–"}</td><td class="n">${nf.format(d.min||0)}</td><td>${esc(d.cat||"")}</td><td class="n">${nf.format(C.byDrug.get(d.id)?.qty||0)}</td><td>${S.canWrite?`<button class="link" data-act="editDrug" data-id="${esc(d.id)}">แก้ไข</button>`:""}</td></tr>`).join("")}</tbody></table>${moreRow(shown.length,ds.length)}` : `<div class="empty">${S.drugs.length?"ไม่พบรายการ":"ยังไม่มีรายการยา เพิ่มทีละรายการ หรือนำเข้าจากไฟล์ Excel ด้านบน"}</div>`;
+}
+function fillPacks(kind,d){
+  const sel=$(kind==="rec"?"#recPack":"#issPack");
+  if(!d){ sel.innerHTML=`<option value="1">—</option>`; sel.dataset.drug=""; return; }
+  if(sel.dataset.drug===d.id) return;
+  sel.dataset.drug=d.id;
+  sel.innerHTML=unitsOf(d).map((p,i)=>`<option value="${i}" data-size="${p.size}" data-unit="${esc(p.unit)}">${esc(p.unit)}${p.size>1?` (${nf.format(p.size)} ${esc(d.unit)})`:""}</option>`).join("");
+}
+function drugHint(kind){
+  const inp=$(kind==="rec"?"#recDrug":"#issDrug"), msg=$(kind==="rec"?"#recMsg":"#issMsg");
+  const d=findDrug(inp.value);
+  fillPacks(kind,d);
+  msg.className="hint";
+  if(!inp.value.trim()){ msg.textContent=""; return; }
+  const q=C.byDrug.get(d?.id)?.qty||0, ip=d?inPacks(d,q):"";
+  msg.textContent = d ? `${drugLabel(d)} — คงเหลือ ${nf.format(q)} ${d.unit}${ip?` (${ip})`:""}` : "ยังไม่พบรายการยา พิมพ์รหัสหรือเลือกจากรายการที่แสดง";
+}
+let lastListKey="";
+function renderForms(){
+  const list=[...S.drugs].sort((a,b)=>drugLabel(a).localeCompare(drugLabel(b)));
+  const key=list.map(d=>d.id+d.name+d.code).join("|");
+  if(key!==lastListKey){
+    lastListKey=key;
+    $("#drugList").innerHTML=list.map(d=>`<option value="${esc(optText(d))}">`).join("");
+    const sel=$("#cardDrug"), cur=sel.value;
+    sel.innerHTML=`<option value="">ทุกรายการยา</option>`+list.map(d=>`<option value="${esc(d.id)}">${esc(optText(d))}</option>`).join("");
+    if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  }
+  for(const id of ["recSave","issSave","drugSave"]) $("#"+id).disabled=!S.canWrite;
+  $("#impPanel").hidden=!S.canWrite;
+}
+function renderTables(){ renderRecTable(); renderIssTable(); renderStock(); renderCard(); renderMaster(); }
+function render(){ C=compute(); renderNotice(); renderOverview(); renderForms(); renderTables(); if(IMP.items) impSummary(); }
+let rTimer=null;
+function scheduleRender(){ if(rTimer) return; rTimer=setTimeout(()=>{ rTimer=null; render(); resolveNames(); }, S.importing?1200:120); }
+
+/* ---------- tabs ---------- */
+function setTab(t){
+  S.tab=t;
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t?"true":"false"));
+  document.querySelectorAll("section.view").forEach(s=>s.hidden=s.dataset.view!==t);
+  try{ history.replaceState(null,"","#"+t); }catch(e){}
+  if(t==="receive") $("#recDrug").focus({preventScroll:true});
+  if(t==="issue") $("#issDrug").focus({preventScroll:true});
+}
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab);});
+let h0=""; try{ h0=(location.hash||"").slice(1); }catch(e){} if(["overview","receive","issue","stock","card","master"].includes(h0)) setTab(h0);
+
+/* ---------- writes ---------- */
+const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+function handleWriteErr(e){ toast("บันทึกไม่สำเร็จ: "+errText(e)); }
+function bumpStock(drugId,dIn,dOut){ if(!S.stock) return; const v=S.stock.get(drugId)||{in:0,out:0}; v.in+=dIn; v.out+=dOut; S.stock.set(drugId,v); }
+async function addTxn(kind,rec){
+  if(S.mode==="demo"){ const o={...rec,id:"x"+newId()}; S[kind].unshift(o); return o; }
+  const row={ date:rec.date, drug_id:rec.drugId, qty:rec.qty, pack_unit:rec.packUnit||null, pack_qty:rec.packQty||null, pack_size:rec.packSize||null, recorder_name:S.by||null };
+  if(kind==="receipts") row.po=rec.po; else row.doc=rec.doc;
+  const {data,error}=await sb.from(kind).insert(row).select().single();
+  if(error){ handleWriteErr(error); return null; }
+  const o=fromRow(data); S[kind].unshift(o);
+  bumpStock(o.drugId, kind==="receipts"?o.qty:0, kind==="issues"?o.qty:0);
+  if((o.date||"").startsWith(todayISO().slice(0,7))){ if(kind==="receipts") S.monthIn=(S.monthIn||0)+1; else S.monthOut=(S.monthOut||0)+1; }
+  return o;
+}
+async function delDoc(col,id){
+  if(S.mode==="demo"){ S[col]=S[col].filter(x=>x.id!==id); return true; }
+  const {data,error}=await sb.from(col).delete().eq("id",id).select();
+  if(error){ handleWriteErr(error); return false; }
+  if(!data.length){ toast("ลบไม่ได้: เฉพาะผู้ดูแลระบบยกเลิกรายการได้"); return false; }
+  const o=S[col].find(x=>x.id===id); if(o) bumpStock(o.drugId, col==="receipts"?-o.qty:0, col==="issues"?-o.qty:0);
+  if(o && (o.date||"").startsWith(todayISO().slice(0,7))){ if(col==="receipts") S.monthIn=Math.max(0,(S.monthIn||0)-1); else S.monthOut=Math.max(0,(S.monthOut||0)-1); }
+  S[col]=S[col].filter(x=>x.id!==id); if(S.card){ S.card[col]=S.card[col].filter(x=>x.id!==id); }
+  return true;
+}
+const stripId = o => { const {id,...rest}=o; return rest; };
+
+/* quick entry (shared by receive & issue) */
+function quickForm(kind){
+  const P=kind==="rec"?"#rec":"#iss", docF=kind==="rec"?"#recPo":"#issDoc", col=kind==="rec"?"receipts":"issues";
+  $(P+"Drug").addEventListener("input",()=>drugHint(kind));
+  $(P+"Form").addEventListener("submit",async e=>{
+    e.preventDefault(); const m=$(P+"Msg"); m.className="hint bad";
+    const date=$(P+"Date").value, no=$(docF).value.trim(), d=findDrug($(P+"Drug").value), n=Math.floor(+$(P+"Qty").value);
+    const psel=$(P+"Pack"), size=Math.max(1,+(psel.options[psel.selectedIndex]?.dataset.size)||1), punit=psel.options[psel.selectedIndex]?.dataset.unit||"";
+    if(!date){ m.textContent="ใส่วันที่"; $(P+"Date").focus(); return; }
+    if(!no){ m.textContent=kind==="rec"?"ใส่เลขที่ PO":"ใส่เลขที่ใบเบิก"; $(docF).focus(); return; }
+    if(!d){ m.textContent="เลือกรายการยาจากทะเบียน (พิมพ์รหัสหรือชื่อแล้วเลือก)"; $(P+"Drug").focus(); return; }
+    if(!(n>0)){ m.textContent="จำนวนต้องมากกว่า 0"; $(P+"Qty").focus(); return; }
+    const qty=n*size;
+    if(kind==="iss"){ const bal=C.byDrug.get(d.id)?.qty||0; if(qty>bal){ m.textContent=`${drugLabel(d)} คงเหลือ ${nf.format(bal)} ${d.unit} ไม่พอจ่าย ${nf.format(qty)} ${d.unit}`; $(P+"Qty").focus(); return; } }
+    const rec={date,drugId:d.id,qty,by:S.by};
+    if(kind==="rec") rec.po=no; else rec.doc=no;
+    if(punit){ rec.packUnit=punit; rec.packQty=n; rec.packSize=size; }
+    if(S.mode==="demo"){ rec.createdAt=Date.now(); }
+    const btn=$(P+"Save"); btn.disabled=true;
+    const ok=await addTxn(col,rec);
+    btn.disabled=!S.canWrite;
+    if(ok){
+      const qtxt = `${nf.format(n)} ${punit||d.unit}${size>1?` (${nf.format(qty)} ${d.unit})`:""}`;
+      toast(`${kind==="rec"?"รับ":"จ่าย"} ${drugLabel(d)} ${qtxt} แล้ว`);
+      $(P+"Drug").value=""; $(P+"Qty").value=""; fillPacks(kind,null);
+      m.className="hint good"; m.textContent=`บันทึกแล้ว: ${drugLabel(d)} ${kind==="rec"?"+":"−"}${qtxt} — กรอกรายการถัดไปในใบ ${no} ได้เลย`;
+      render();
+      $(P+"Drug").focus();
+    }
+  });
+}
+quickForm("rec"); quickForm("iss");
+
+/* drug master */
+function resetDrugForm(){ S.editDrug=null; for(const id of ["dCode","dName","dStr","dUnit","dMin","dCat"]) $("#"+id).value=""; $("#drugMode").textContent="เพิ่มรายการใหม่"; $("#drugSave").textContent="บันทึกรายการยา"; $("#drugMsg").textContent=""; }
+$("#drugClear").addEventListener("click",resetDrugForm);
+$("#drugForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const m=$("#drugMsg"); m.className="hint bad";
+  const v={code:$("#dCode").value.trim(),name:$("#dName").value.trim(),strength:$("#dStr").value.trim(),unit:$("#dUnit").value.trim(),min:Math.max(0,Math.floor(+$("#dMin").value||0)),cat:$("#dCat").value.trim()};
+  if(!v.code||!v.name||!v.unit){ m.textContent="กรอกรหัสยา ชื่อยา และหน่วยนับให้ครบ"; return; }
+  if(S.drugs.some(d=>String(d.code)===v.code && d.id!==S.editDrug)){ m.textContent=`รหัส ${v.code} มีในทะเบียนแล้ว`; return; }
+  const btn=$("#drugSave"); btn.disabled=true;
+  const editing=S.editDrug, old=editing?drugById(editing):null;
+  const obj={...(old?stripId(old):{packs:[]}),...v,id:editing||""};
+  let ok=true;
+  if(S.mode==="demo"){ if(editing){ Object.assign(old,v); } else S.drugs.push({...obj,id:"x"+newId(),packs:[{unit:v.unit,size:1}]}); }
+  else {
+    const row={ id: editing || ("i-"+v.code.replace(/[^A-Za-z0-9_.-]/g,"_")), code:v.code, name:v.name, unit:v.unit, cat:v.cat||"", min:v.min,
+      packs: (old && old.packs && old.packs.length) ? old.packs : [{unit:v.unit,size:1}], updated_at:new Date().toISOString() };
+    const {error}= editing ? await sb.from("drugs").update(row).eq("id",editing) : await sb.from("drugs").insert(row);
+    if(error){ ok=false; m.textContent=/duplicate key/.test(error.message)?`รหัส ${v.code} มีในทะเบียนแล้ว`:errText(error); } else await reload();
+  }
+  btn.disabled=!S.canWrite;
+  if(ok){ toast(editing?"แก้ไขรายการยาแล้ว":`เพิ่ม ${v.name} ในทะเบียนแล้ว`); resetDrugForm(); render(); }
+});
+
+/* ---------- Excel importer ---------- */
+const IMP = { rows:null, header:null, map:{}, items:null };
+const FIELDS = [
+  {k:"code", label:"รหัสยา *", re:/item\s*id|รหัส|code/i},
+  {k:"name", label:"ชื่อยา *", re:/ชื่อ|name|รายการยา/i},
+  {k:"unit", label:"หน่วย", re:/^หน่วย|unit/i},
+  {k:"pack", label:"ขนาดบรรจุ", re:/ขนาดบรรจุ|pack/i},
+  {k:"cat",  label:"ประเภท", re:/ประเภท|categ|type/i},
+  {k:"use1", label:"ใช้ 1 เดือน", re:/1\s*เดือน|1\s*month/i},
+  {k:"use3", label:"ใช้ 3 เดือน", re:/3\s*เดือน|3\s*month/i},
+  {k:"use12",label:"ใช้ 12 เดือน", re:/12\s*เดือน|12\s*month|ปี/i},
+];
+let xlsxReady=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(!xlsxReady) xlsxReady=new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload=res; s.onerror=()=>{xlsxReady=null;rej();}; document.head.appendChild(s); });
+  return xlsxReady;
+}
+const toNum = v => { if(v==null||v==="") return null; const n=+String(v).replace(/[,\s]/g,""); return isFinite(n)?n:null; };
+const cleanName = s => String(s||"").replace(/\s+/g," ").replace(/[\s:.]+$/,"").trim();
+async function readFile(file){
+  const msg=$("#impMsg");
+  $("#impBody").hidden=false; $("#impStats").innerHTML=""; $("#impPreview").innerHTML=`<div class="empty">กำลังอ่านไฟล์ ${esc(file.name)}…</div>`; msg.textContent="";
+  try{ await loadXLSX(); }catch(e){ $("#impPreview").innerHTML=`<div class="empty">โหลดตัวอ่านไฟล์ Excel ไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</div>`; return; }
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+    let rows=null;
+    for(const n of wb.SheetNames){ const r=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:""}).filter(r=>r.some(c=>String(c).trim()!=="")); if(r.length>1){ rows=r; break; } }
+    if(!rows){ $("#impPreview").innerHTML=`<div class="empty">ไม่พบข้อมูลในไฟล์ แถวแรกต้องเป็นหัวคอลัมน์ ตามด้วยรายการยา</div>`; return; }
+    IMP.header=rows[0].map(h=>String(h).trim()); IMP.rows=rows.slice(1); IMP.file=file.name;
+    IMP.map={}; for(const f of FIELDS){ const i=IMP.header.findIndex(h=>f.re.test(h)); IMP.map[f.k]=i; }
+    renderMap(); buildItems();
+  }catch(e){ $("#impPreview").innerHTML=`<div class="empty">อ่านไฟล์ไม่ได้ ตรวจสอบว่าเป็นไฟล์ .xlsx .xls หรือ .csv</div>`; }
+}
+function renderMap(){
+  const opts=i=>`<option value="-1">— ไม่ใช้ —</option>`+IMP.header.map((h,j)=>`<option value="${j}"${j===i?" selected":""}>${esc(h||"คอลัมน์ "+(j+1))}</option>`).join("");
+  $("#impMap").innerHTML=FIELDS.map(f=>`<div class="f"><label for="map-${f.k}">${f.label}</label><select id="map-${f.k}" data-k="${f.k}">${opts(IMP.map[f.k])}</select></div>`).join("");
+}
+$("#impMap").addEventListener("change",e=>{ const s=e.target.closest("select[data-k]"); if(!s) return; IMP.map[s.dataset.k]=+s.value; buildItems(); });
+function buildItems(){
+  const M=IMP.map, get=(r,k)=>M[k]>=0?String(r[M[k]]??"").trim():"";
+  const groups=new Map(); let bad=0;
+  for(const r of IMP.rows){
+    const code=get(r,"code"), name=cleanName(get(r,"name"));
+    if(!code||!name){ bad++; continue; }
+    let g=groups.get(code);
+    if(!g){ g={code,name,cat:get(r,"cat"),use1:toNum(get(r,"use1")),use3:toNum(get(r,"use3")),use12:toNum(get(r,"use12")),base:"",rowUnits:[],packs:[]}; groups.set(code,g); }
+    const unit=get(r,"unit"), pm=get(r,"pack").match(/([\d.,]+)\s*([^\]\d][^\]]*?)\s*\]?\s*$/);
+    const size=pm?Math.max(1,Math.round(toNum(pm[1])||1)):1, inner=pm?pm[2].replace(/^\[/,"").trim():unit;
+    if(!g.base) g.base=inner;
+    const u=unit||inner;
+    if(u && !g.packs.some(p=>p.unit===u && p.size===size)) g.packs.push({unit:u,size});
+  }
+  for(const g of groups.values()){ if(!g.base) g.base="หน่วย"; }
+  IMP.items=[...groups.values()]; IMP.bad=bad;
+  impSummary();
+}
+function minFrom(g){
+  const o=$("#impMin").value;
+  const v = o==="avg12"&&g.use12!=null ? g.use12/12 : o==="avg3"&&g.use3!=null ? g.use3/3 : o==="use1" ? g.use1 : null;
+  return v==null?null:Math.round(v);
+}
+function impSummary(){
+  if(!IMP.items) return;
+  const dup=$("#impDup").value;
+  let nNew=0,nUpd=0,nSkip=0;
+  for(const g of IMP.items){ const ex=C.byCode.get(g.code); if(!ex) nNew++; else if(dup==="update") nUpd++; else nSkip++; }
+  IMP.plan={nNew,nUpd,nSkip};
+  $("#impStats").innerHTML=`<span class="pill ex">${esc(IMP.file)} · ${nf.format(IMP.rows.length)} แถว</span><span class="pill ok">รายการยา ${nf.format(IMP.items.length)} รายการ</span><span class="pill in">เพิ่มใหม่ ${nf.format(nNew)}</span>${nUpd?`<span class="pill warn">อัปเดต ${nf.format(nUpd)}</span>`:""}${nSkip?`<span class="pill ex">ข้าม (มีแล้ว) ${nf.format(nSkip)}</span>`:""}${IMP.bad?`<span class="pill bad">แถวไม่มีรหัส/ชื่อ ${nf.format(IMP.bad)}</span>`:""}`;
+  const pv=IMP.items.slice(0,15);
+  $("#impPreview").innerHTML = IMP.items.length ? `<table><thead><tr><th>รหัส</th><th>ชื่อยา</th><th>หน่วยนับคงคลัง</th><th>หน่วยรับ / จ่าย</th><th class="n">ใช้ 12 เดือน</th><th class="n">จุดสั่งซื้อ</th><th>ผล</th></tr></thead><tbody>${pv.map(g=>{const ex=C.byCode.get(g.code);const mn=minFrom(g);return `<tr><td class="mono">${esc(g.code)}</td><td>${esc(g.name)}</td><td>${esc(g.base)}</td><td class="dmeta">${esc(packText({unit:g.base,packs:g.packs}))}</td><td class="n">${g.use12!=null?nf.format(g.use12):"–"}</td><td class="n">${mn!=null?nf.format(mn):"–"}</td><td>${!ex?'<span class="pill in">ใหม่</span>':dup==="update"?'<span class="pill warn">อัปเดต</span>':'<span class="pill ex">ข้าม</span>'}</td></tr>`}).join("")}</tbody></table>${moreRow(pv.length,IMP.items.length).replace("ใช้ช่องค้นหาเพื่อหารายการที่ต้องการ","(ตัวอย่างก่อนนำเข้า)")}` : `<div class="empty">ไม่พบรายการที่มีทั้งรหัสและชื่อยา ตรวจสอบการจับคู่คอลัมน์ด้านบน</div>`;
+  const total=nNew+nUpd;
+  const go=$("#impGo"); go.textContent= total?`นำเข้า ${nf.format(total)} รายการ`:"ไม่มีรายการให้นำเข้า"; go.disabled=!total||S.importing||!S.canWrite;
+    
+}
+$("#impMin").addEventListener("change",impSummary); $("#impDup").addEventListener("change",impSummary);
+$("#impFile").addEventListener("change",e=>{ const f=e.target.files?.[0]; if(f) readFile(f); });
+const drop=$("#impDrop");
+drop.addEventListener("dragover",e=>{e.preventDefault(); drop.classList.add("over");});
+drop.addEventListener("dragleave",()=>drop.classList.remove("over"));
+drop.addEventListener("drop",e=>{e.preventDefault(); drop.classList.remove("over"); const f=e.dataTransfer?.files?.[0]; if(f) readFile(f);});
+$("#impCancel").addEventListener("click",()=>{ if(S.importing){ S.importCancel=true; return; } IMP.items=null; IMP.rows=null; $("#impBody").hidden=true; $("#impFile").value=""; });
+$("#impGo").addEventListener("click",async()=>{
+  if(!IMP.items||S.importing) return;
+  const dup=$("#impDup").value;
+  const items=IMP.items.map(g=>({code:g.code,name:g.name,unit:g.base,packs:g.packs,cat:g.cat||"",min:minFrom(g),use1:g.use1,use3:g.use3,use12:g.use12}));
+  S.importing=true; impSummary();
+  const prog=$("#impProg"), bar=prog.firstElementChild, msg=$("#impMsg"); prog.hidden=false; bar.style.width="35%";
+  msg.textContent=`กำลังเขียน ${nf.format(items.length)} รายการลง Google Sheet…`;
+  try{
+    let r;
+    if(S.mode==="demo"){ r={added:0,updated:0,skipped:0}; for(const it of items){ const ex=C.byCode.get(it.code); if(ex&&dup==="skip"){r.skipped++;continue;} if(ex){Object.assign(ex,{...it,min:it.min??ex.min});r.updated++;} else {S.drugs.push({...it,id:"i-"+it.code,min:it.min??0});r.added++;} } }
+    else {
+      r={added:0,updated:0,skipped:0}; const rows=[];
+      for(const it of items){
+        const ex=C.byCode.get(String(it.code));
+        if(ex && dup==="skip"){ r.skipped++; continue; }
+        ex ? r.updated++ : r.added++;
+        rows.push({ id: ex ? ex.id : "i-"+String(it.code).replace(/[^A-Za-z0-9_.-]/g,"_"), code:String(it.code), name:it.name, unit:it.unit,
+          packs:it.packs, cat:it.cat||"", min: it.min ?? (ex ? ex.min||0 : 0), use1:it.use1, use3:it.use3, use12:it.use12, updated_at:new Date().toISOString() });
+      }
+      for(let i=0;i<rows.length;i+=500){
+        const {error}=await sb.from("drugs").upsert(rows.slice(i,i+500),{onConflict:"code"});
+        if(error) throw error;
+        bar.style.width=Math.round(100*Math.min(rows.length,i+500)/rows.length)+"%";
+        msg.textContent=`กำลังบันทึก ${nf.format(Math.min(rows.length,i+500))} / ${nf.format(rows.length)}…`;
+      }
+      await reload();
+    }
+    bar.style.width="100%";
+    msg.textContent=`นำเข้าแล้ว: เพิ่มใหม่ ${nf.format(r.added)} · อัปเดต ${nf.format(r.updated)}${r.skipped?` · ข้าม ${nf.format(r.skipped)}`:""}`;
+    toast("นำเข้ารายการยาลง Google Sheet แล้ว");
+  }catch(e){ msg.textContent="นำเข้าไม่สำเร็จ: "+errText(e); }
+  S.importing=false; $("#impCancel").textContent="ยกเลิก";
+  render();
+});
+
+/* table actions */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]"); if(!b) return;
+  const a=b.dataset.act;
+  if(a==="editDrug"){ const d=drugById(b.dataset.id); if(!d) return; S.editDrug=d.id; $("#dCode").value=d.code; $("#dName").value=d.name; $("#dStr").value=d.strength||""; $("#dUnit").value=d.unit; $("#dMin").value=d.min||0; $("#dCat").value=d.cat||""; $("#drugMode").textContent=`กำลังแก้ไข: ${d.code} ${d.name}`; $("#drugSave").textContent="บันทึกการแก้ไข"; $("#dName").focus(); }
+  if(a==="del"){ S.confirmDel=b.dataset.kind+":"+b.dataset.id; renderTables(); }
+  if(a==="delNo"){ S.confirmDel=null; renderTables(); }
+  if(a==="delYes"){ S.confirmDel=null; const ok=await delDoc(b.dataset.kind,b.dataset.id); if(ok){ toast("ยกเลิกรายการแล้ว ยอดคงคลังปรับตามแล้ว"); render(); } }
+  if(a==="reload"){ reload(); }
+  if(a==="delStaff"){ const {error}=await sb.from("staff").delete().eq("email",b.dataset.email); if(error) toast(errText(error)); else { toast("นำออกจากรายชื่อแล้ว"); loadStaff(); } }
+});
+$("#stockQ").addEventListener("input",renderStock); $("#stockF").addEventListener("change",renderStock);
+$("#masterQ").addEventListener("input",renderMaster);
+$("#cardDrug").addEventListener("change",loadCard); $("#cardMonth").addEventListener("change",loadCard); $("#cardType").addEventListener("change",renderCard);
+
+/* ---------- boot ---------- */
+$("#recDate").value=todayISO(); $("#issDate").value=todayISO();
+render();
+function startDemo(){ const s=sampleData(); S.drugs=s.drugs.map(({sample,...d})=>d); S.receipts=s.receipts.map(({sample,...d})=>d); S.issues=s.issues.map(({sample,...d})=>d); S.mode="demo"; S.canWrite=true; S.canEdit=true; render(); }
+
+async function reload(){
+  if(!GAS) return;
+  try{
+    const mon=todayISO().slice(0,7), [y,m]=mon.split("-").map(Number), end=new Date(y,m,1);
+    const next=`${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-01`;
+    const [drugs, stock, rec, iss, cin, cout]=await Promise.all([
+      fetchAll("drugs"),
+      fetchAll("stock_balance","drug_id,in_qty,out_qty","drug_id"),
+      sb.from("receipts").select("*").order("created_at",{ascending:false}).limit(300),
+      sb.from("issues").select("*").order("created_at",{ascending:false}).limit(300),
+      sb.from("receipts").select("id",{count:"exact",head:true}).gte("date",mon+"-01").lt("date",next),
+      sb.from("issues").select("id",{count:"exact",head:true}).gte("date",mon+"-01").lt("date",next),
+    ]);
+    for(const x of [rec,iss,cin,cout]) if(x.error) throw x.error;
+    S.drugs=drugs.map(d=>({...d,packs:Array.isArray(d.packs)?d.packs:[]}));
+    S.stock=new Map(stock.filter(x=>x.in_qty||x.out_qty).map(x=>[x.drug_id,{in:Number(x.in_qty),out:Number(x.out_qty)}]));
+    S.receipts=rec.data.map(fromRow); S.issues=iss.data.map(fromRow);
+    S.monthIn=cin.count; S.monthOut=cout.count;
+    S.mode="live"; S.canWrite=true; S.loadedAt=new Date();
+  }catch(e){ S.mode="error"; S.err=errText(e); }
+  render();
+  if(S.card) loadCard();
+  $("#syncInfo").textContent = S.loadedAt ? "อัปเดต "+S.loadedAt.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}) : "";
+}
+let rtTimer=null, channel=null;
+function subscribeRealtime(){
+  if(channel) return;
+  channel=sb.channel("stock-changes");
+  for(const t of ["receipts","issues","drugs"]) channel.on("postgres_changes",{event:"*",schema:"public",table:t},()=>{ clearTimeout(rtTimer); rtTimer=setTimeout(()=>{ if(!S.importing) reload(); },1500); });
+  channel.subscribe();
+}
+/* ---------- เข้าสู่ระบบ ---------- */
+function showLogin(msg){ $("#login").hidden=false; $("#app").hidden=true; $("#loginMsg").textContent=msg||""; }
+async function afterLogin(session){
+  const email=session.user.email;
+  const {data:okStaff,error}=await sb.rpc("is_staff");
+  if(error || !okStaff){ showLogin(`บัญชี ${email} ยังไม่ได้รับสิทธิ์ใช้งาน แจ้งผู้ดูแลระบบให้เพิ่มอีเมลนี้ในรายชื่อผู้ใช้งาน`); await sb.auth.signOut(); return; }
+  const [{data:admin},{data:me}]=await Promise.all([sb.rpc("is_admin"), sb.from("staff").select("name").eq("email",email).maybeSingle()]);
+  S.canEdit=!!admin; S.by=(me&&me.name)||email;
+  $("#who").textContent=S.by; $("#login").hidden=true; $("#app").hidden=false;
+  $("#staffPanel").hidden=!S.canEdit; if(S.canEdit) loadStaff();
+  await reload(); subscribeRealtime();
+}
+$("#loginForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const b=$("#loginBtn"); b.disabled=true; $("#loginMsg").textContent="กำลังเข้าสู่ระบบ…";
+  const {data,error}=await sb.auth.signInWithPassword({email:$("#loginEmail").value.trim(),password:$("#loginPass").value});
+  b.disabled=false;
+  if(error){ $("#loginMsg").textContent=errText(error); return; }
+  $("#loginPass").value=""; afterLogin(data.session);
+});
+$("#logoutBtn").addEventListener("click",async()=>{ await sb.auth.signOut(); if(channel){ sb.removeChannel(channel); channel=null; } S.mode="loading"; showLogin("ออกจากระบบแล้ว"); });
+$("#refreshBtn").addEventListener("click",()=>{ reload(); toast("ดึงข้อมูลล่าสุดแล้ว"); });
+/* ---------- ผู้ใช้งาน (เฉพาะผู้ดูแลระบบ) ---------- */
+async function loadStaff(){
+  const {data,error}=await sb.from("staff").select("*").order("created_at");
+  if(error) return;
+  $("#staffList").innerHTML=data.map(s=>`<tr><td>${esc(s.email)}</td><td>${esc(s.name||"")}</td><td>${s.is_admin?'<span class="pill ok">ผู้ดูแล</span>':'<span class="pill ex">ผู้ใช้</span>'}</td><td>${s.email!==S.email?`<button class="link" data-act="delStaff" data-email="${esc(s.email)}">นำออก</button>`:""}</td></tr>`).join("");
+}
+$("#staffForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const m=$("#staffMsg"); m.className="hint bad";
+  const email=$("#stEmail").value.trim().toLowerCase(), name=$("#stName").value.trim(), is_admin=$("#stAdmin").checked;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ m.textContent="อีเมลไม่ถูกต้อง"; return; }
+  const {error}=await sb.from("staff").upsert({email,name:name||null,is_admin});
+  if(error){ m.textContent=errText(error); return; }
+  m.className="hint good"; m.textContent=`เพิ่ม ${email} แล้ว ต่อไปสร้างบัญชีเข้าสู่ระบบให้อีเมลนี้ใน Supabase (Authentication → Users → Add user)`;
+  $("#stEmail").value=""; $("#stName").value=""; $("#stAdmin").checked=false; loadStaff();
+});
+if(!GAS){ $("#login").hidden=true; $("#app").hidden=false; S.by="ผู้ทดลอง"; startDemo(); }
+else {
+  sb.auth.getSession().then(({data})=>{ if(data.session){ S.email=data.session.user.email; afterLogin(data.session); } else showLogin(""); });
+  sb.auth.onAuthStateChange((ev,session)=>{ if(session) S.email=session.user.email; });
+}
+})();
+
+</script>
+</body>
+</html>
